@@ -28,6 +28,7 @@ class PositioningEngine:
     def __init__(self):
         """Initialize the positioning engine."""
         self.recommendations = []
+        self.q4_sizing_multiplier = 0.5  # Reduce Q4 (>75 scores) by 50% due to signal quality issues
 
     def generate_recommendations(
         self,
@@ -48,12 +49,17 @@ class PositioningEngine:
         regime = regime_data['regime']
         conviction = regime_data['conviction']
 
+        # CRITICAL FIX: Check for Q4 signal quality issues (scores > 75)
+        is_q4_extreme = master_score > 75
+        if is_q4_extreme:
+            logger.warning(f"Q4 EXTREME SIGNAL DETECTED (score: {master_score:.1f}) - Applying 50% position sizing reduction")
+
         logger.info(f"Generating positions for {regime} regime (score: {master_score:.1f})")
 
         recommendations = []
 
         # 1. Equity Index CFDs
-        recommendations.extend(self._equity_recommendations(master_score, conviction))
+        recommendations.extend(self._equity_recommendations(master_score, conviction, is_q4_extreme))
 
         # 2. Bond CFDs
         recommendations.extend(self._bond_recommendations(master_score, conviction))
@@ -67,14 +73,26 @@ class PositioningEngine:
         self.recommendations = recommendations
         return recommendations
 
-    def _equity_recommendations(self, score: float, conviction: str) -> List[Dict[str, Any]]:
-        """Generate equity index CFD recommendations."""
+    def _equity_recommendations(self, score: float, conviction: str, is_q4_extreme: bool = False) -> List[Dict[str, Any]]:
+        """
+        Generate equity index CFD recommendations.
+
+        Args:
+            score: Master regime score (0-100)
+            conviction: Conviction level (HIGH/MEDIUM/LOW)
+            is_q4_extreme: True if score > 75 (apply position sizing reduction)
+        """
         recommendations = []
 
-        # REBALANCED POSITION SIZING (Nov 2025 v2) - More measured approach
-        # First version had extreme sizing causing negative downside capture
-        # This version: More aggressive upside, LESS aggressive downside
-        # Key fix: Reduced short exposure to prevent inverse correlation
+        # REBALANCED POSITION SIZING (Nov 2025 v3) - SIGNAL QUALITY FIXES
+        # v1: Extreme sizing caused negative downside capture
+        # v2: Fixed short exposure but Q4 signal quality still poor
+        # v3: CRITICAL FIX - Reduce Q4 sizing by 50%, NEUTRAL to CASH
+
+        # Key improvements:
+        # 1. Q4 (>75) gets 50% reduction due to signal decay
+        # 2. NEUTRAL changed from 35% long to 0% (CASH - no edge, no risk)
+        # 3. Maintained measured short exposure from v2
 
         if score >= 80:
             # STRONG RISK-ON - Aggressive but not extreme
@@ -84,7 +102,7 @@ class PositioningEngine:
             qqq_sizing = 50   # Kept at 50 (was 60 - too aggressive)
             iwm_action = "BUY"
             iwm_sizing = 35   # Slightly increased from original 30
-            # Net exposure: 185% long
+            # Net exposure: 185% long (BEFORE Q4 reduction)
 
         elif score >= 60:
             # MODERATE RISK-ON - Increased but measured
@@ -94,17 +112,19 @@ class PositioningEngine:
             qqq_sizing = 40   # Increased from original 35
             iwm_action = "BUY"
             iwm_sizing = 25   # Increased from original 20
-            # Net exposure: 145% long
+            # Net exposure: 145% long (BEFORE Q4 reduction)
 
         elif score >= 40:
-            # NEUTRAL - Conservative participation (was too aggressive at 50%)
-            spy_action = "HOLD"
-            spy_sizing = 25   # REDUCED from 35 (was causing issues)
-            qqq_action = "HOLD"
-            qqq_sizing = 10   # REDUCED from 15
-            iwm_action = "NEUTRAL"
-            iwm_sizing = 0
-            # Net exposure: 35% long (reduced from 50%)
+            # NEUTRAL - GO TO CASH (v3 FIX!)
+            # Problem: 0.016% return with 3.37% volatility = taking risk with NO EDGE
+            # Solution: 0% equity exposure, hold cash or bonds
+            spy_action = "CASH"
+            spy_sizing = 0    # CHANGED from 25 (was taking risk with no edge)
+            qqq_action = "CASH"
+            qqq_sizing = 0    # CHANGED from 10
+            iwm_action = "CASH"
+            iwm_sizing = 0    # No change (was already 0)
+            # Net exposure: 0% (TRUE NEUTRAL - no risk when no edge)
 
         elif score >= 20:
             # MODERATE RISK-OFF - DRASTICALLY REDUCED short exposure
@@ -127,6 +147,16 @@ class PositioningEngine:
             iwm_action = "REDUCE"
             iwm_sizing = -10  # REDUCED from -50
             # Net exposure: -70% (was -200% - way too extreme!)
+
+        # CRITICAL Q4 FIX: Reduce position sizing by 50% for extreme scores (>75)
+        # Problem: Q4 scores (75-100) have NEGATIVE avg returns (-0.034%) vs Q3 (+0.803%)
+        # Root cause: Signal quality degrades at extremes (mean reversion, overfitting)
+        # Solution: Cut all positions in half when score > 75
+        if is_q4_extreme:
+            spy_sizing = int(spy_sizing * self.q4_sizing_multiplier)
+            qqq_sizing = int(qqq_sizing * self.q4_sizing_multiplier)
+            iwm_sizing = int(iwm_sizing * self.q4_sizing_multiplier)
+            logger.warning(f"Q4 SIZING REDUCTION APPLIED: SPY={spy_sizing}% QQQ={qqq_sizing}% IWM={iwm_sizing}%")
 
         recommendations.extend([
             {
