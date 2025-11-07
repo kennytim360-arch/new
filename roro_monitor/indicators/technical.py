@@ -1,0 +1,303 @@
+"""
+Technical indicators for price trend and momentum analysis.
+"""
+
+import pandas as pd
+import numpy as np
+from typing import Tuple, Optional
+import logging
+
+from ..config import settings
+
+logger = logging.getLogger(__name__)
+
+
+class TechnicalIndicators:
+    """
+    Collection of technical analysis indicators.
+    Institutional-grade implementation with proper error handling.
+    """
+
+    @staticmethod
+    def calculate_moving_averages(
+        data: pd.DataFrame,
+        periods: list = None
+    ) -> pd.DataFrame:
+        """
+        Calculate multiple Simple Moving Averages.
+
+        Args:
+            data: DataFrame with 'close' column
+            periods: List of MA periods (default: [50, 100, 200])
+
+        Returns:
+            DataFrame with MA columns
+        """
+        if periods is None:
+            periods = [settings.MA_SHORT, settings.MA_MEDIUM, settings.MA_LONG]
+
+        result = data.copy()
+
+        for period in periods:
+            result[f'ma_{period}'] = result['close'].rolling(window=period).mean()
+
+        return result
+
+    @staticmethod
+    def calculate_rsi(
+        data: pd.DataFrame,
+        period: int = None
+    ) -> pd.Series:
+        """
+        Calculate Relative Strength Index.
+
+        Args:
+            data: DataFrame with 'close' column
+            period: RSI period (default from settings)
+
+        Returns:
+            Series with RSI values
+        """
+        if period is None:
+            period = settings.RSI_PERIOD
+
+        delta = data['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+
+        return rsi
+
+    @staticmethod
+    def calculate_macd(
+        data: pd.DataFrame,
+        fast: int = None,
+        slow: int = None,
+        signal: int = None
+    ) -> Tuple[pd.Series, pd.Series, pd.Series]:
+        """
+        Calculate MACD (Moving Average Convergence Divergence).
+
+        Args:
+            data: DataFrame with 'close' column
+            fast: Fast EMA period
+            slow: Slow EMA period
+            signal: Signal line period
+
+        Returns:
+            Tuple of (macd_line, signal_line, histogram)
+        """
+        if fast is None:
+            fast = settings.MACD_FAST
+        if slow is None:
+            slow = settings.MACD_SLOW
+        if signal is None:
+            signal = settings.MACD_SIGNAL
+
+        exp1 = data['close'].ewm(span=fast, adjust=False).mean()
+        exp2 = data['close'].ewm(span=slow, adjust=False).mean()
+
+        macd_line = exp1 - exp2
+        signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+        histogram = macd_line - signal_line
+
+        return macd_line, signal_line, histogram
+
+    @staticmethod
+    def calculate_bollinger_bands(
+        data: pd.DataFrame,
+        period: int = 20,
+        num_std: float = 2.0
+    ) -> Tuple[pd.Series, pd.Series, pd.Series]:
+        """
+        Calculate Bollinger Bands.
+
+        Args:
+            data: DataFrame with 'close' column
+            period: Moving average period
+            num_std: Number of standard deviations
+
+        Returns:
+            Tuple of (upper_band, middle_band, lower_band)
+        """
+        middle_band = data['close'].rolling(window=period).mean()
+        std = data['close'].rolling(window=period).std()
+
+        upper_band = middle_band + (std * num_std)
+        lower_band = middle_band - (std * num_std)
+
+        return upper_band, middle_band, lower_band
+
+    @staticmethod
+    def calculate_atr(
+        data: pd.DataFrame,
+        period: int = 14
+    ) -> pd.Series:
+        """
+        Calculate Average True Range (volatility measure).
+
+        Args:
+            data: DataFrame with high, low, close columns
+            period: ATR period
+
+        Returns:
+            Series with ATR values
+        """
+        high_low = data['high'] - data['low']
+        high_close = np.abs(data['high'] - data['close'].shift())
+        low_close = np.abs(data['low'] - data['close'].shift())
+
+        true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+        atr = true_range.rolling(window=period).mean()
+
+        return atr
+
+    @staticmethod
+    def calculate_momentum(
+        data: pd.DataFrame,
+        period: int = 10
+    ) -> pd.Series:
+        """
+        Calculate price momentum.
+
+        Args:
+            data: DataFrame with 'close' column
+            period: Lookback period
+
+        Returns:
+            Series with momentum values (percentage change)
+        """
+        return data['close'].pct_change(periods=period) * 100
+
+    @staticmethod
+    def ma_alignment_score(data: pd.DataFrame) -> float:
+        """
+        Score based on moving average alignment.
+        Perfect bullish alignment (50 > 100 > 200) = 100
+        Perfect bearish alignment (50 < 100 < 200) = 0
+
+        Args:
+            data: DataFrame with MA columns
+
+        Returns:
+            Score from 0-100
+        """
+        if data.empty or len(data) < settings.MA_LONG:
+            return 50.0  # Neutral
+
+        latest = data.iloc[-1]
+
+        # Check if MAs exist
+        required_cols = ['ma_50', 'ma_100', 'ma_200']
+        if not all(col in latest.index for col in required_cols):
+            return 50.0
+
+        ma_50 = latest['ma_50']
+        ma_100 = latest['ma_100']
+        ma_200 = latest['ma_200']
+
+        # Price above all MAs
+        price = latest['close']
+
+        score = 50.0  # Start neutral
+
+        # Alignment scoring
+        if ma_50 > ma_100 > ma_200:
+            score += 30  # Bullish alignment
+        elif ma_50 < ma_100 < ma_200:
+            score -= 30  # Bearish alignment
+
+        # Price position
+        if price > ma_50:
+            score += 10
+        if price > ma_200:
+            score += 10
+        if price < ma_50:
+            score -= 10
+        if price < ma_200:
+            score -= 10
+
+        return np.clip(score, 0, 100)
+
+    @staticmethod
+    def rsi_regime_score(rsi: pd.Series) -> float:
+        """
+        Score based on RSI regime.
+        Penalizes extreme overbought/oversold conditions.
+
+        Args:
+            rsi: RSI series
+
+        Returns:
+            Score from 0-100
+        """
+        if rsi.empty:
+            return 50.0
+
+        current_rsi = rsi.iloc[-1]
+
+        if np.isnan(current_rsi):
+            return 50.0
+
+        # Optimal RSI range is 40-60 (neutral with slight bullish bias)
+        if 40 <= current_rsi <= 60:
+            score = 100
+        elif current_rsi > settings.RSI_OVERBOUGHT:
+            # Overbought - potential reversal risk
+            score = max(0, 100 - (current_rsi - settings.RSI_OVERBOUGHT) * 2)
+        elif current_rsi < settings.RSI_OVERSOLD:
+            # Oversold - potential reversal opportunity
+            score = max(0, current_rsi / settings.RSI_OVERSOLD * 50)
+        elif current_rsi > 60:
+            # Mildly overbought
+            score = 80 - (current_rsi - 60) * 2
+        else:
+            # Below 40
+            score = 50 + (current_rsi - 40) * 2.5
+
+        return np.clip(score, 0, 100)
+
+    @staticmethod
+    def macd_signal_score(histogram: pd.Series) -> float:
+        """
+        Score based on MACD histogram direction and strength.
+
+        Args:
+            histogram: MACD histogram series
+
+        Returns:
+            Score from 0-100
+        """
+        if histogram.empty or len(histogram) < 5:
+            return 50.0
+
+        current = histogram.iloc[-1]
+        previous = histogram.iloc[-2]
+
+        if np.isnan(current) or np.isnan(previous):
+            return 50.0
+
+        # Base score on histogram value
+        if current > 0:
+            base_score = 60
+        else:
+            base_score = 40
+
+        # Adjust for momentum
+        if current > previous:
+            base_score += 20  # Bullish momentum
+        else:
+            base_score -= 20  # Bearish momentum
+
+        # Check for recent crossover
+        recent_cross_up = (histogram.iloc[-3:] < 0).any() and current > 0
+        recent_cross_down = (histogram.iloc[-3:] > 0).any() and current < 0
+
+        if recent_cross_up:
+            base_score += 15
+        elif recent_cross_down:
+            base_score -= 15
+
+        return np.clip(base_score, 0, 100)
