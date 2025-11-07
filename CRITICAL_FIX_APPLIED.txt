@@ -1,0 +1,61 @@
+============================================================================
+  CRITICAL FIX APPLIED - SETTINGS IMPORT ERROR RESOLVED
+============================================================================
+
+ISSUE FIXED:
+  AttributeError: module 'roro_monitor.config.settings' has no attribute 'DATA_CACHE_HOURS'
+
+ROOT CAUSE:
+  The config package's __init__.py was only exporting the Settings CLASS,
+  not the settings INSTANCE. When other modules tried to access
+  settings.DATA_CACHE_HOURS, the instance wasn't available.
+
+THE FIX:
+  Updated: roro_monitor/config/__init__.py
+
+  Changed from:
+    from .settings import Settings
+    __all__ = ['Settings', 'AssetUniverse']
+
+  Changed to:
+    from .settings import Settings, settings
+    __all__ = ['Settings', 'settings', 'AssetUniverse']
+
+VERIFICATION:
+  ✓ Settings instance now properly exported
+  ✓ DATA_CACHE_HOURS = 1 (confirmed)
+  ✓ All other settings attributes accessible
+  ✓ Fix committed and pushed to remote
+
+============================================================================
+  TO GET THE FIX ON YOUR MACHINE:
+============================================================================
+
+Run these commands in PowerShell:
+
+  cd C:\Users\User\geosignal\new-claude-institutional-roro-monitor-011CUsaUHtVNX3Gd2DXSoC6w
+
+  git pull origin claude/institutional-roro-monitor-011CUsaUHtVNX3Gd2DXSoC6w
+
+  python main.py analyze
+
+EXPECTED RESULT:
+  The system should now run without the DATA_CACHE_HOURS error and start
+  fetching market data from Yahoo Finance.
+
+============================================================================
+  WHAT TO DO IF YOU SEE OTHER ERRORS:
+============================================================================
+
+If you see "No module named 'pandas'":
+  → Run: pip install -r requirements.txt
+
+If you see "No module named 'yfinance'":
+  → Run: pip install -r requirements.txt
+
+If you see network/timeout errors:
+  → This is normal - Yahoo Finance API can be slow
+  → The system will retry automatically
+  → Data is cached for 1 hour to minimize API calls
+
+============================================================================
