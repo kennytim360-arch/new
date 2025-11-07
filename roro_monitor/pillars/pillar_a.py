@@ -53,20 +53,33 @@ class PillarA_PriceTrend(BasePillar):
 
             ticker_data = data[ticker].copy()
 
-            # 1. Moving Average Alignment
+            # 1. Moving Average Alignment (LAGGING)
             ticker_data = self.tech_indicators.calculate_moving_averages(ticker_data)
             ma_score = self.tech_indicators.ma_alignment_score(ticker_data)
 
-            # 2. RSI Regime
+            # 2. RSI Regime (COINCIDENT)
             rsi = self.tech_indicators.calculate_rsi(ticker_data)
             rsi_score = self.tech_indicators.rsi_regime_score(rsi)
 
-            # 3. MACD Signal
+            # 3. MACD Signal (COINCIDENT)
             macd_line, signal_line, histogram = self.tech_indicators.calculate_macd(ticker_data)
             macd_score = self.tech_indicators.macd_signal_score(histogram)
 
-            # Weighted combination for this ticker
-            ticker_score = (ma_score * 0.40 + rsi_score * 0.30 + macd_score * 0.30)
+            # 4. ROC Momentum (LEADING) - NEW for upside capture
+            roc_score = self.tech_indicators.roc_momentum_score(ticker_data, period=5)
+
+            # 5. Fast MA Crossover (LEADING) - NEW for early trend signals
+            fast_ma_score = self.tech_indicators.fast_ma_crossover_score(ticker_data)
+
+            # OPTIMIZED WEIGHTS (Nov 2025) - Added leading indicators
+            # Reduced lagging, increased leading for faster upside capture
+            ticker_score = (
+                ma_score * 0.25 +          # MA Alignment (reduced from 0.40)
+                rsi_score * 0.20 +         # RSI Regime (reduced from 0.30)
+                macd_score * 0.20 +        # MACD Signal (reduced from 0.30)
+                roc_score * 0.20 +         # ROC Momentum (NEW)
+                fast_ma_score * 0.15       # Fast MA Crossover (NEW)
+            )
             scores.append(ticker_score)
 
             # Store component scores for the primary asset (SPY)
@@ -75,6 +88,8 @@ class PillarA_PriceTrend(BasePillar):
                     'ma_alignment': ma_score,
                     'rsi_regime': rsi_score,
                     'macd_signal': macd_score,
+                    'roc_momentum': roc_score,
+                    'fast_ma_crossover': fast_ma_score,
                     'ma_50': ticker_data['ma_50'].iloc[-1] if 'ma_50' in ticker_data.columns else np.nan,
                     'ma_200': ticker_data['ma_200'].iloc[-1] if 'ma_200' in ticker_data.columns else np.nan,
                     'current_rsi': rsi.iloc[-1] if not rsi.empty else np.nan,

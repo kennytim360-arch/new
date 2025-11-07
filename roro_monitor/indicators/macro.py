@@ -250,3 +250,161 @@ class MacroIndicators:
         score = 50 - (avg_safe_haven * 5)
 
         return np.clip(score, 0, 100)
+
+    @staticmethod
+    def sector_rotation_score(
+        financials_data: pd.DataFrame,
+        cyclicals_data: pd.DataFrame,
+        defensives_data: pd.DataFrame,
+        period: int = 20
+    ) -> float:
+        """
+        Score based on sector rotation patterns.
+
+        Early cycle: Financials and cyclicals outperform
+        Late cycle: Defensives outperform
+        Risk-off: Defensives significantly outperform
+
+        Args:
+            financials_data: XLF (Financial sector) data
+            cyclicals_data: XLI (Industrial sector) data
+            defensives_data: XLP (Consumer staples) data
+            period: Lookback period
+
+        Returns:
+            Score from 0-100
+        """
+        if financials_data.empty or cyclicals_data.empty or defensives_data.empty:
+            return 50.0
+
+        if len(financials_data) < period or len(cyclicals_data) < period or len(defensives_data) < period:
+            return 50.0
+
+        # Calculate relative performance
+        xlf_return = (financials_data['close'].iloc[-1] / financials_data['close'].iloc[-period] - 1) * 100
+        xli_return = (cyclicals_data['close'].iloc[-1] / cyclicals_data['close'].iloc[-period] - 1) * 100
+        xlp_return = (defensives_data['close'].iloc[-1] / defensives_data['close'].iloc[-period] - 1) * 100
+
+        # Financial sector strength = confidence = Risk-On
+        # Cyclicals strength = growth = Risk-On
+        # Defensives relative weakness = Risk-On
+
+        risk_on_sectors = (xlf_return + xli_return) / 2
+        risk_off_sectors = xlp_return
+
+        # Relative strength
+        relative_strength = risk_on_sectors - risk_off_sectors
+
+        # Score based on rotation
+        score = 50.0
+
+        if relative_strength > 5:
+            score = 75  # Strong Risk-On rotation
+        elif relative_strength > 2:
+            score = 65  # Moderate Risk-On rotation
+        elif relative_strength > -2:
+            score = 50  # Neutral
+        elif relative_strength > -5:
+            score = 35  # Moderate Risk-Off rotation
+        else:
+            score = 25  # Strong Risk-Off rotation
+
+        return score
+
+    @staticmethod
+    def financial_sector_leadership_score(
+        xlf_data: pd.DataFrame,
+        spy_data: pd.DataFrame,
+        period: int = 20
+    ) -> float:
+        """
+        Financial sector relative strength as confidence indicator.
+
+        Financials leading = Economic confidence = Risk-On
+        Financials lagging = Economic concern = Risk-Off
+
+        Args:
+            xlf_data: Financial sector ETF (XLF) data
+            spy_data: S&P 500 ETF (SPY) data
+            period: Lookback period
+
+        Returns:
+            Score from 0-100
+        """
+        if xlf_data.empty or spy_data.empty:
+            return 50.0
+
+        if len(xlf_data) < period or len(spy_data) < period:
+            return 50.0
+
+        # Calculate returns
+        xlf_return = (xlf_data['close'].iloc[-1] / xlf_data['close'].iloc[-period] - 1) * 100
+        spy_return = (spy_data['close'].iloc[-1] / spy_data['close'].iloc[-period] - 1) * 100
+
+        # Relative strength
+        relative_strength = xlf_return - spy_return
+
+        # Score based on leadership
+        score = 50.0
+
+        if relative_strength > 3:
+            score = 80  # Strong financial leadership = high confidence
+        elif relative_strength > 1:
+            score = 65  # Moderate leadership
+        elif relative_strength > -1:
+            score = 50  # Neutral
+        elif relative_strength > -3:
+            score = 35  # Lagging
+        else:
+            score = 20  # Significant underperformance = low confidence
+
+        return score
+
+    @staticmethod
+    def small_cap_large_cap_ratio_score(
+        iwm_data: pd.DataFrame,
+        spy_data: pd.DataFrame,
+        period: int = 20
+    ) -> float:
+        """
+        Small-cap vs Large-cap relative strength as risk appetite indicator.
+
+        Small-caps outperforming = High risk appetite = Risk-On
+        Large-caps outperforming = Risk aversion = Risk-Off
+
+        Args:
+            iwm_data: Russell 2000 ETF (IWM) data
+            spy_data: S&P 500 ETF (SPY) data
+            period: Lookback period
+
+        Returns:
+            Score from 0-100
+        """
+        if iwm_data.empty or spy_data.empty:
+            return 50.0
+
+        if len(iwm_data) < period or len(spy_data) < period:
+            return 50.0
+
+        # Calculate returns
+        iwm_return = (iwm_data['close'].iloc[-1] / iwm_data['close'].iloc[-period] - 1) * 100
+        spy_return = (spy_data['close'].iloc[-1] / spy_data['close'].iloc[-period] - 1) * 100
+
+        # Relative strength
+        relative_strength = iwm_return - spy_return
+
+        # Score based on risk appetite
+        score = 50.0
+
+        if relative_strength > 4:
+            score = 85  # Extreme risk appetite
+        elif relative_strength > 2:
+            score = 70  # High risk appetite
+        elif relative_strength > -2:
+            score = 50  # Neutral
+        elif relative_strength > -4:
+            score = 30  # Risk aversion
+        else:
+            score = 15  # Extreme risk aversion
+
+        return score

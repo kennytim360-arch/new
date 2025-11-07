@@ -71,47 +71,62 @@ class PositioningEngine:
         """Generate equity index CFD recommendations."""
         recommendations = []
 
-        # Base exposure calculation
+        # ASYMMETRIC DYNAMIC POSITION SIZING (OPTIMIZED Nov 2025)
+        # Goal: Capture more upside while maintaining downside protection
+        # Asymmetry: More aggressive in Risk-On, same defensive in Risk-Off
+
         if score >= 80:
-            # STRONG RISK-ON
+            # STRONG RISK-ON - INCREASED EXPOSURE (was 100/50/30)
+            # Target: 120-150% net long exposure
             spy_action = "STRONG BUY"
-            spy_sizing = 100
+            spy_sizing = 120  # INCREASED from 100
             qqq_action = "STRONG BUY"
-            qqq_sizing = 50
+            qqq_sizing = 60   # INCREASED from 50
             iwm_action = "BUY"
-            iwm_sizing = 30
+            iwm_sizing = 40   # INCREASED from 30
+            # Net exposure: 220% long (aggressive for strong signals)
+
         elif score >= 60:
-            # MODERATE RISK-ON
+            # MODERATE RISK-ON - INCREASED EXPOSURE (was 75/35/20)
+            # Target: 80-100% net long exposure
             spy_action = "BUY"
-            spy_sizing = 75
+            spy_sizing = 85   # INCREASED from 75
             qqq_action = "BUY"
-            qqq_sizing = 35
+            qqq_sizing = 40   # INCREASED from 35
             iwm_action = "BUY"
-            iwm_sizing = 20
+            iwm_sizing = 25   # INCREASED from 20
+            # Net exposure: 150% long
+
         elif score >= 40:
-            # NEUTRAL
-            spy_action = "NEUTRAL"
-            spy_sizing = 0
-            qqq_action = "NEUTRAL"
-            qqq_sizing = 0
+            # NEUTRAL - SLIGHTLY INCREASED (was 0/0/0)
+            # Target: 20-50% long (participate in neutral markets)
+            spy_action = "HOLD"
+            spy_sizing = 35   # INCREASED from 0 (maintain some exposure)
+            qqq_action = "HOLD"
+            qqq_sizing = 15   # INCREASED from 0
             iwm_action = "NEUTRAL"
-            iwm_sizing = 0
+            iwm_sizing = 0    # Keep small-cap neutral
+            # Net exposure: 50% long (instead of 0%)
+
         elif score >= 20:
-            # MODERATE RISK-OFF
+            # MODERATE RISK-OFF - UNCHANGED (maintaining defensive stance)
             spy_action = "SELL"
             spy_sizing = -50
             qqq_action = "SELL"
             qqq_sizing = -25
             iwm_action = "SELL"
             iwm_sizing = -30
+            # Net exposure: -105% (defensive)
+
         else:
-            # STRONG RISK-OFF
+            # STRONG RISK-OFF - UNCHANGED (maintaining defensive stance)
             spy_action = "STRONG SELL"
             spy_sizing = -100
             qqq_action = "STRONG SELL"
             qqq_sizing = -50
             iwm_action = "STRONG SELL"
             iwm_sizing = -50
+            # Net exposure: -200% (maximum defensive)
 
         recommendations.extend([
             {

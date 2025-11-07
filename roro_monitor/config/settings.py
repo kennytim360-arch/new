@@ -20,12 +20,14 @@ class Settings:
     TIMEFRAMES: Dict[str, int] = None
 
     # Technical Indicator Parameters
+    # OPTIMIZED (Nov 2025) - Added fast MA for early signals, adjusted RSI
+    MA_FAST: int = 20      # NEW: Fast MA for early trend detection
     MA_SHORT: int = 50
     MA_MEDIUM: int = 100
     MA_LONG: int = 200
     RSI_PERIOD: int = 14
-    RSI_OVERBOUGHT: float = 70.0
-    RSI_OVERSOLD: float = 30.0
+    RSI_OVERBOUGHT: float = 65.0   # OPTIMIZED: Was 70.0 (earlier signals)
+    RSI_OVERSOLD: float = 35.0     # OPTIMIZED: Was 30.0 (earlier signals)
     MACD_FAST: int = 12
     MACD_SLOW: int = 26
     MACD_SIGNAL: int = 9
@@ -46,12 +48,15 @@ class Settings:
     def __post_init__(self):
         """Initialize default values."""
         if self.PILLAR_WEIGHTS is None:
+            # OPTIMIZED WEIGHTS (Nov 2025) - Balanced offense/defense
+            # Increased trend weight, reduced defensive macro weight
+            # Target: Higher upside capture while maintaining downside protection
             self.PILLAR_WEIGHTS = {
-                'pillar_a': 0.30,  # Price Trend & Momentum
-                'pillar_b': 0.25,  # Market Breadth & Health
-                'pillar_c': 0.25,  # Macro-Fundamental Drivers
-                'pillar_d': 0.10,  # Currency & Carry Trade
-                'pillar_e': 0.10,  # Sentiment & Positioning
+                'pillar_a': 0.35,  # Price Trend & Momentum (was 0.30) - INCREASED
+                'pillar_b': 0.25,  # Market Breadth & Health (unchanged)
+                'pillar_c': 0.20,  # Macro-Fundamental Drivers (was 0.25) - REDUCED
+                'pillar_d': 0.10,  # Currency & Carry Trade (unchanged)
+                'pillar_e': 0.10,  # Sentiment & Positioning (unchanged)
             }
 
         if self.REGIME_THRESHOLDS is None:

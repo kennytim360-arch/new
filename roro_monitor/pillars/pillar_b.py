@@ -43,15 +43,20 @@ class PillarB_MarketBreadth(BasePillar):
         """
         scores = []
 
-        # 1. Sector Rotation Score (50%)
+        # OPTIMIZED (Nov 2025) - Added sector rotation and leadership signals
+        # 1. Sector Rotation Score (35%) - Cyclicals vs Defensives
         sector_score = self._calculate_sector_rotation(data)
-        scores.append(('sector_rotation', sector_score, 0.50))
+        scores.append(('sector_rotation', sector_score, 0.35))
 
-        # 2. Market Leadership - IWM vs SPY (30%)
-        leadership_score = self._calculate_leadership(data)
-        scores.append(('market_leadership', leadership_score, 0.30))
+        # 2. Financial Sector Leadership (20%) - NEW confidence indicator
+        financial_leadership = self._calculate_financial_leadership(data)
+        scores.append(('financial_leadership', financial_leadership, 0.20))
 
-        # 3. Risk Asset Dispersion (20%)
+        # 3. Small/Large Cap Ratio (25%) - Risk appetite
+        size_ratio = self._calculate_size_ratio(data)
+        scores.append(('size_ratio', size_ratio, 0.25))
+
+        # 4. Risk Asset Dispersion (20%) - Breadth health
         dispersion_score = self._calculate_dispersion(data)
         scores.append(('risk_dispersion', dispersion_score, 0.20))
 
@@ -73,19 +78,67 @@ class PillarB_MarketBreadth(BasePillar):
         return final_score
 
     def _calculate_sector_rotation(self, data: Dict[str, pd.DataFrame]) -> float:
-        """Calculate sector rotation score."""
-        cyclical_tickers = AssetUniverse.get_cyclical_sectors()
-        defensive_tickers = AssetUniverse.get_defensive_sectors()
+        """
+        Calculate sector rotation score using new method.
+        Financials + Industrials vs Consumer Staples.
+        """
+        required_tickers = ['XLF', 'XLI', 'XLP']
 
-        cyclical_data = {t: data[t] for t in cyclical_tickers if t in data}
-        defensive_data = {t: data[t] for t in defensive_tickers if t in data}
+        if not all(t in data for t in required_tickers):
+            logger.warning("Missing sector ETF data for rotation analysis")
+            return None
 
-        if not cyclical_data or not defensive_data:
-            logger.warning("Insufficient sector data")
+        xlf_data = data['XLF']
+        xli_data = data['XLI']
+        xlp_data = data['XLP']
+
+        if xlf_data.empty or xli_data.empty or xlp_data.empty:
             return None
 
         score = self.macro_indicators.sector_rotation_score(
-            cyclical_data, defensive_data, period=20
+            xlf_data, xli_data, xlp_data, period=20
+        )
+
+        return score
+
+    def _calculate_financial_leadership(self, data: Dict[str, pd.DataFrame]) -> float:
+        """
+        Calculate financial sector leadership score (NEW).
+        Financials outperforming SPY = economic confidence.
+        """
+        if 'XLF' not in data or 'SPY' not in data:
+            logger.warning("Missing XLF or SPY data for financial leadership")
+            return None
+
+        xlf_data = data['XLF']
+        spy_data = data['SPY']
+
+        if xlf_data.empty or spy_data.empty:
+            return None
+
+        score = self.macro_indicators.financial_sector_leadership_score(
+            xlf_data, spy_data, period=20
+        )
+
+        return score
+
+    def _calculate_size_ratio(self, data: Dict[str, pd.DataFrame]) -> float:
+        """
+        Calculate small-cap vs large-cap ratio score (UPDATED).
+        Uses the new small_cap_large_cap_ratio_score method.
+        """
+        if 'IWM' not in data or 'SPY' not in data:
+            logger.warning("Missing IWM or SPY data for size ratio")
+            return None
+
+        iwm_data = data['IWM']
+        spy_data = data['SPY']
+
+        if iwm_data.empty or spy_data.empty:
+            return None
+
+        score = self.macro_indicators.small_cap_large_cap_ratio_score(
+            iwm_data, spy_data, period=20
         )
 
         return score

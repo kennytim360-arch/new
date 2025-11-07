@@ -301,3 +301,166 @@ class TechnicalIndicators:
             base_score -= 15
 
         return np.clip(base_score, 0, 100)
+
+    @staticmethod
+    def calculate_roc(
+        data: pd.DataFrame,
+        period: int = 5
+    ) -> pd.Series:
+        """
+        Calculate Rate of Change (ROC) indicator.
+
+        ROC is a leading momentum indicator that measures the percentage
+        change in price over a specified period.
+
+        Args:
+            data: DataFrame with 'close' column
+            period: Number of periods for ROC calculation (default: 5)
+
+        Returns:
+            Series with ROC values
+        """
+        close = data['close']
+        roc = ((close - close.shift(period)) / close.shift(period)) * 100
+        return roc
+
+    @staticmethod
+    def roc_momentum_score(data: pd.DataFrame, period: int = 5) -> float:
+        """
+        Score based on Rate of Change momentum.
+
+        Leading indicator for early trend detection.
+
+        Args:
+            data: DataFrame with price data
+            period: ROC period (default: 5 days)
+
+        Returns:
+            Score from 0-100
+        """
+        if data.empty or len(data) < period + 1:
+            return 50.0
+
+        roc = TechnicalIndicators.calculate_roc(data, period)
+
+        if roc.empty or pd.isna(roc.iloc[-1]):
+            return 50.0
+
+        current_roc = roc.iloc[-1]
+
+        # Score based on ROC value and direction
+        score = 50.0
+
+        # Positive/negative momentum
+        if current_roc > 2.0:
+            score = 70 + min(30, current_roc * 3)  # Strong positive
+        elif current_roc > 0:
+            score = 50 + (current_roc / 2.0) * 20  # Moderate positive
+        elif current_roc > -2.0:
+            score = 50 + (current_roc / 2.0) * 20  # Moderate negative
+        else:
+            score = 30 + max(-30, current_roc * 3)  # Strong negative
+
+        return np.clip(score, 0, 100)
+
+    @staticmethod
+    def momentum_divergence_score(
+        data: pd.DataFrame,
+        rsi: pd.Series,
+        lookback: int = 20
+    ) -> float:
+        """
+        Detect bullish/bearish divergences between price and RSI.
+
+        Divergences are powerful leading indicators:
+        - Bullish divergence: Price makes lower low, RSI makes higher low
+        - Bearish divergence: Price makes higher high, RSI makes lower high
+
+        Args:
+            data: DataFrame with price data
+            rsi: RSI series
+            lookback: Period to check for divergences
+
+        Returns:
+            Score from 0-100 (>50 = bullish divergence, <50 = bearish)
+        """
+        if data.empty or rsi.empty or len(data) < lookback:
+            return 50.0
+
+        recent_data = data.iloc[-lookback:]
+        recent_rsi = rsi.iloc[-lookback:]
+
+        # Find price highs/lows
+        price_high_idx = recent_data['close'].idxmax()
+        price_low_idx = recent_data['close'].idxmin()
+
+        # Find RSI highs/lows
+        rsi_high_idx = recent_rsi.idxmax()
+        rsi_low_idx = recent_rsi.idxmin()
+
+        score = 50.0  # Neutral
+
+        # Bullish divergence check (price lower low, RSI higher low)
+        if price_low_idx < len(recent_data) - 5:  # Not too recent
+            price_trend = recent_data['close'].iloc[-1] - recent_data['close'].iloc[price_low_idx]
+            rsi_trend = recent_rsi.iloc[-1] - recent_rsi.iloc[rsi_low_idx]
+
+            if price_trend < 0 and rsi_trend > 0:
+                score = 70  # Bullish divergence
+
+        # Bearish divergence check (price higher high, RSI lower high)
+        if price_high_idx < len(recent_data) - 5:  # Not too recent
+            price_trend = recent_data['close'].iloc[-1] - recent_data['close'].iloc[price_high_idx]
+            rsi_trend = recent_rsi.iloc[-1] - recent_rsi.iloc[rsi_high_idx]
+
+            if price_trend > 0 and rsi_trend < 0:
+                score = 30  # Bearish divergence
+
+        return score
+
+    @staticmethod
+    def fast_ma_crossover_score(data: pd.DataFrame) -> float:
+        """
+        Score based on fast MA (20-day) crossover with medium MA (50-day).
+
+        Early trend detection signal.
+
+        Args:
+            data: DataFrame with MA columns
+
+        Returns:
+            Score from 0-100
+        """
+        if data.empty or len(data) < settings.MA_SHORT:
+            return 50.0
+
+        latest = data.iloc[-1]
+        previous = data.iloc[-2] if len(data) > 1 else latest
+
+        # Calculate fast MA if not present
+        if 'ma_20' not in latest.index:
+            data['ma_20'] = data['close'].rolling(window=settings.MA_FAST).mean()
+            latest = data.iloc[-1]
+            previous = data.iloc[-2] if len(data) > 1 else latest
+
+        if 'ma_50' not in latest.index:
+            return 50.0
+
+        ma_20_current = latest['ma_20']
+        ma_50_current = latest['ma_50']
+        ma_20_prev = previous['ma_20'] if 'ma_20' in previous.index else ma_20_current
+        ma_50_prev = previous['ma_50'] if 'ma_50' in previous.index else ma_50_current
+
+        score = 50.0
+
+        # Check for crossover
+        if ma_20_current > ma_50_current:
+            score = 70  # Bullish position
+            if ma_20_prev <= ma_50_prev:  # Recent crossover
+                score = 85  # Strong bullish signal
+        elif ma_20_current < ma_50_current:
+            score = 30  # Bearish position
+            if ma_20_prev >= ma_50_prev:  # Recent crossover
+                score = 15  # Strong bearish signal
+
+        return score
