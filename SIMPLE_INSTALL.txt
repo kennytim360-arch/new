@@ -1,0 +1,101 @@
+================================================================================
+                    RO/RO MONITOR - SIMPLE INSTALLATION
+================================================================================
+
+STEP 1: Run the setup script
+-----------------------------
+
+    python FINAL_SETUP.py
+
+This will:
+  - Fix all import errors
+  - Verify all files are present
+  - Check if dependencies are installed
+  - Tell you exactly what to do next
+
+
+STEP 2: Install dependencies (if needed)
+-----------------------------------------
+
+If FINAL_SETUP.py says "DEPENDENCIES NEEDED", run:
+
+    pip install -r requirements.txt
+
+Or if that fails, install individually:
+    pip install pandas numpy yfinance dash plotly dash-bootstrap-components
+
+
+STEP 3: Run the monitor
+------------------------
+
+    python main.py analyze
+
+This will:
+  ✓ Fetch REAL market data from Yahoo Finance
+  ✓ Calculate regime score (0-100)
+  ✓ Show 5 pillar breakdowns
+  ✓ Generate CFD position recommendations
+  ✓ Display any active alerts
+
+
+EXPECTED OUTPUT:
+----------------
+
+============================================================
+INSTITUTIONAL RO/RO MONITOR - ANALYSIS
+============================================================
+
+Master Score: 67.3/100
+Regime: MODERATE_RISK_ON
+Conviction: MEDIUM
+
+--- Pillar Scores ---
+Pillar A: Price Trend & Momentum: 72.1 (Slightly Bullish)
+Pillar B: Market Breadth & Health: 65.8 (Slightly Bullish)
+Pillar C: Macro-Fundamental Drivers: 58.2 (NEUTRAL)
+Pillar D: Currency & Carry Trade: 71.5 (BULLISH)
+Pillar E: Sentiment & Positioning: 63.0 (Slightly Bullish)
+
+--- CFD Positioning Recommendations ---
+SPY    | BUY          | Sizing:  +75% | Large Cap US Equities
+QQQ    | BUY          | Sizing:  +35% | Tech-heavy Nasdaq
+TLT    | NEUTRAL      | Sizing:    0% | Long-term Treasuries
+...
+
+Net Equity Exposure: +110% | Risk Bias: LONG
+
+
+OTHER OPTIONS:
+--------------
+
+Launch web dashboard:
+    python main.py dashboard
+    (then open http://localhost:8050)
+
+Run historical backtest:
+    python main.py backtest
+
+
+TROUBLESHOOTING:
+----------------
+
+Error: "No module named 'pandas'"
+Fix: pip install -r requirements.txt
+
+Error: "cannot import name"
+Fix: python FINAL_SETUP.py
+
+Error: Network/timeout fetching data
+Fix: Check internet connection, try again
+
+
+THAT'S IT!
+----------
+
+Just run:
+    python FINAL_SETUP.py
+    python main.py analyze
+
+You'll get a live regime score and CFD recommendations!
+
+================================================================================

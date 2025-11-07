@@ -1,0 +1,69 @@
+================================================================================
+                RO/RO MONITOR - INSTALLATION INSTRUCTIONS
+================================================================================
+
+STEP 1: Run the complete installation
+--------------------------------------
+
+    python COMPLETE_INSTALLATION.py
+
+This will automatically:
+  • Install missing files
+  • Fix all errors  
+  • Test with real market data
+  • Verify everything works
+
+Takes 1-2 minutes.
+
+
+STEP 2: Use the system
+-----------------------
+
+After successful installation:
+
+  Console Analysis:
+    python main.py analyze
+
+  Web Dashboard:
+    python main.py dashboard
+    (then open http://localhost:8050)
+
+  Historical Backtest:
+    python main.py backtest
+
+
+TROUBLESHOOTING
+---------------
+
+If you get "ModuleNotFoundError":
+  pip install -r requirements.txt
+
+If installation fails:
+  Run steps manually:
+    python install_data_module.py
+    python FIX_ALL_ISSUES.py  
+    python TEST_SYSTEM.py
+
+
+WHAT IT DOES
+------------
+
+The RO/RO Monitor calculates a Master Regime Score (0-100) based on:
+  • Price trends and momentum (30%)
+  • Market breadth (25%)
+  • Macro fundamentals (25%)  
+  • Currency carry trades (10%)
+  • Market sentiment (10%)
+
+Then recommends CFD positions based on the regime.
+
+
+QUICK START
+-----------
+
+Just run:
+  python COMPLETE_INSTALLATION.py
+
+That's it!
+
+================================================================================
