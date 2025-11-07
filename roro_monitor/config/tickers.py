@@ -31,7 +31,7 @@ class AssetUniverse:
     # Equities - Safety/Defensive
     EQUITIES_SAFETY = AssetClass(
         name="Equities (Safety)",
-        tickers=["XLU", "XLP", "VDEF"],
+        tickers=["XLU", "XLP"],  # Removed VDEF (delisted)
         purpose="Defensive Hedges"
     )
 

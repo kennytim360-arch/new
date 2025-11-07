@@ -103,10 +103,11 @@ class RegimeEngine:
                     'details': {'error': str(e)}
                 }
 
-        # Calculate master score (weighted sum normalized to 0-100)
+        # Calculate master score (weighted sum - already on 0-100 scale)
         weighted_scores = [data['weighted_score'] for data in pillar_scores.values()]
         total_weight = sum(pillar.weight for pillar in self.pillars)
-        self.master_score = (sum(weighted_scores) / total_weight) * 100
+        # Pillar scores are already 0-100, so weighted sum gives us 0-100 directly
+        self.master_score = sum(weighted_scores) / total_weight
 
         # Determine regime and conviction
         self.regime = settings.get_regime_from_score(self.master_score)
