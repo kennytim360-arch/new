@@ -71,14 +71,15 @@ class PillarA_PriceTrend(BasePillar):
             # 5. Fast MA Crossover (LEADING) - NEW for early trend signals
             fast_ma_score = self.tech_indicators.fast_ma_crossover_score(ticker_data)
 
-            # OPTIMIZED WEIGHTS (Nov 2025) - Added leading indicators
-            # Reduced lagging, increased leading for faster upside capture
+            # REBALANCED WEIGHTS (Nov 2025 v2) - More conservative leading indicators
+            # First version caused too many whipsaws (23 regime changes)
+            # This version reduces leading indicator sensitivity while maintaining responsiveness
             ticker_score = (
-                ma_score * 0.25 +          # MA Alignment (reduced from 0.40)
-                rsi_score * 0.20 +         # RSI Regime (reduced from 0.30)
-                macd_score * 0.20 +        # MACD Signal (reduced from 0.30)
-                roc_score * 0.20 +         # ROC Momentum (NEW)
-                fast_ma_score * 0.15       # Fast MA Crossover (NEW)
+                ma_score * 0.30 +          # MA Alignment (increased from 0.25)
+                rsi_score * 0.25 +         # RSI Regime (increased from 0.20)
+                macd_score * 0.25 +        # MACD Signal (increased from 0.20)
+                roc_score * 0.12 +         # ROC Momentum (reduced from 0.20 - too noisy)
+                fast_ma_score * 0.08       # Fast MA Crossover (reduced from 0.15 - too noisy)
             )
             scores.append(ticker_score)
 

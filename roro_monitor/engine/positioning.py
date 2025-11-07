@@ -71,62 +71,62 @@ class PositioningEngine:
         """Generate equity index CFD recommendations."""
         recommendations = []
 
-        # ASYMMETRIC DYNAMIC POSITION SIZING (OPTIMIZED Nov 2025)
-        # Goal: Capture more upside while maintaining downside protection
-        # Asymmetry: More aggressive in Risk-On, same defensive in Risk-Off
+        # REBALANCED POSITION SIZING (Nov 2025 v2) - More measured approach
+        # First version had extreme sizing causing negative downside capture
+        # This version: More aggressive upside, LESS aggressive downside
+        # Key fix: Reduced short exposure to prevent inverse correlation
 
         if score >= 80:
-            # STRONG RISK-ON - INCREASED EXPOSURE (was 100/50/30)
-            # Target: 120-150% net long exposure
+            # STRONG RISK-ON - Aggressive but not extreme
             spy_action = "STRONG BUY"
-            spy_sizing = 120  # INCREASED from 100
+            spy_sizing = 100  # Kept at 100 (was 120 - too aggressive)
             qqq_action = "STRONG BUY"
-            qqq_sizing = 60   # INCREASED from 50
+            qqq_sizing = 50   # Kept at 50 (was 60 - too aggressive)
             iwm_action = "BUY"
-            iwm_sizing = 40   # INCREASED from 30
-            # Net exposure: 220% long (aggressive for strong signals)
+            iwm_sizing = 35   # Slightly increased from original 30
+            # Net exposure: 185% long
 
         elif score >= 60:
-            # MODERATE RISK-ON - INCREASED EXPOSURE (was 75/35/20)
-            # Target: 80-100% net long exposure
+            # MODERATE RISK-ON - Increased but measured
             spy_action = "BUY"
-            spy_sizing = 85   # INCREASED from 75
+            spy_sizing = 80   # Increased from original 75
             qqq_action = "BUY"
-            qqq_sizing = 40   # INCREASED from 35
+            qqq_sizing = 40   # Increased from original 35
             iwm_action = "BUY"
-            iwm_sizing = 25   # INCREASED from 20
-            # Net exposure: 150% long
+            iwm_sizing = 25   # Increased from original 20
+            # Net exposure: 145% long
 
         elif score >= 40:
-            # NEUTRAL - SLIGHTLY INCREASED (was 0/0/0)
-            # Target: 20-50% long (participate in neutral markets)
+            # NEUTRAL - Conservative participation (was too aggressive at 50%)
             spy_action = "HOLD"
-            spy_sizing = 35   # INCREASED from 0 (maintain some exposure)
+            spy_sizing = 25   # REDUCED from 35 (was causing issues)
             qqq_action = "HOLD"
-            qqq_sizing = 15   # INCREASED from 0
+            qqq_sizing = 10   # REDUCED from 15
             iwm_action = "NEUTRAL"
-            iwm_sizing = 0    # Keep small-cap neutral
-            # Net exposure: 50% long (instead of 0%)
+            iwm_sizing = 0
+            # Net exposure: 35% long (reduced from 50%)
 
         elif score >= 20:
-            # MODERATE RISK-OFF - UNCHANGED (maintaining defensive stance)
-            spy_action = "SELL"
-            spy_sizing = -50
-            qqq_action = "SELL"
-            qqq_sizing = -25
-            iwm_action = "SELL"
-            iwm_sizing = -30
-            # Net exposure: -105% (defensive)
+            # MODERATE RISK-OFF - DRASTICALLY REDUCED short exposure
+            # The extreme shorting was causing negative downside capture
+            spy_action = "REDUCE"
+            spy_sizing = -20  # REDUCED from -50 (was too aggressive)
+            qqq_action = "REDUCE"
+            qqq_sizing = -10  # REDUCED from -25
+            iwm_action = "NEUTRAL"
+            iwm_sizing = 0    # CHANGED from -30 (no small-cap shorts)
+            # Net exposure: -30% (was -105% - too extreme!)
 
         else:
-            # STRONG RISK-OFF - UNCHANGED (maintaining defensive stance)
-            spy_action = "STRONG SELL"
-            spy_sizing = -100
-            qqq_action = "STRONG SELL"
-            qqq_sizing = -50
-            iwm_action = "STRONG SELL"
-            iwm_sizing = -50
-            # Net exposure: -200% (maximum defensive)
+            # STRONG RISK-OFF - CAPPED short exposure
+            # Preventing extreme inverse correlation
+            spy_action = "SELL"
+            spy_sizing = -40  # REDUCED from -100 (was too aggressive)
+            qqq_action = "SELL"
+            qqq_sizing = -20  # REDUCED from -50
+            iwm_action = "REDUCE"
+            iwm_sizing = -10  # REDUCED from -50
+            # Net exposure: -70% (was -200% - way too extreme!)
 
         recommendations.extend([
             {

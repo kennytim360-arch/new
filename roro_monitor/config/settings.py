@@ -48,13 +48,13 @@ class Settings:
     def __post_init__(self):
         """Initialize default values."""
         if self.PILLAR_WEIGHTS is None:
-            # OPTIMIZED WEIGHTS (Nov 2025) - Balanced offense/defense
-            # Increased trend weight, reduced defensive macro weight
-            # Target: Higher upside capture while maintaining downside protection
+            # REBALANCED WEIGHTS (Nov 2025 v2) - More measured approach
+            # First optimization was too aggressive with leading indicators
+            # This version maintains offense but adds stability
             self.PILLAR_WEIGHTS = {
-                'pillar_a': 0.35,  # Price Trend & Momentum (was 0.30) - INCREASED
+                'pillar_a': 0.32,  # Price Trend & Momentum (was 0.35, now 0.32)
                 'pillar_b': 0.25,  # Market Breadth & Health (unchanged)
-                'pillar_c': 0.20,  # Macro-Fundamental Drivers (was 0.25) - REDUCED
+                'pillar_c': 0.23,  # Macro-Fundamental Drivers (was 0.20, now 0.23 - more stability)
                 'pillar_d': 0.10,  # Currency & Carry Trade (unchanged)
                 'pillar_e': 0.10,  # Sentiment & Positioning (unchanged)
             }
