@@ -60,12 +60,15 @@ class Settings:
             }
 
         if self.REGIME_THRESHOLDS is None:
+            # v4: Made Risk-Off harder to trigger (was 20-39, now 15-39)
+            # Reason: MODERATE_RISK_OFF had -1.618% avg returns (catastrophic)
+            # Fewer Risk-Off periods + defensive allocation = better protection
             self.REGIME_THRESHOLDS = {
                 'STRONG_RISK_ON': (80, 100),
                 'MODERATE_RISK_ON': (60, 79),
                 'NEUTRAL': (40, 59),
-                'MODERATE_RISK_OFF': (20, 39),
-                'STRONG_RISK_OFF': (0, 19),
+                'MODERATE_RISK_OFF': (15, 39),  # CHANGED from (20, 39) - harder to trigger
+                'STRONG_RISK_OFF': (0, 14),      # CHANGED from (0, 19) - only extreme fear
             }
 
         if self.TIMEFRAMES is None:

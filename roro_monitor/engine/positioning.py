@@ -127,26 +127,31 @@ class PositioningEngine:
             # Net exposure: 0% (TRUE NEUTRAL - no risk when no edge)
 
         elif score >= 20:
-            # MODERATE RISK-OFF - DRASTICALLY REDUCED short exposure
-            # The extreme shorting was causing negative downside capture
-            spy_action = "REDUCE"
-            spy_sizing = -20  # REDUCED from -50 (was too aggressive)
-            qqq_action = "REDUCE"
-            qqq_sizing = -10  # REDUCED from -25
-            iwm_action = "NEUTRAL"
-            iwm_sizing = 0    # CHANGED from -30 (no small-cap shorts)
-            # Net exposure: -30% (was -105% - too extreme!)
+            # MODERATE RISK-OFF - GO TO CASH/DEFENSIVE (v4 CRITICAL FIX!)
+            # Problem: v3 had -30% shorts → -1.618% avg returns (CATASTROPHIC!)
+            # Root cause: Shorting during Risk-Off creates losses, not protection
+            # Solution: 0% equity exposure, pure defensive positioning
+            spy_action = "CASH"
+            spy_sizing = 0    # CHANGED from -20 (shorting was losing money)
+            qqq_action = "CASH"
+            qqq_sizing = 0    # CHANGED from -10
+            iwm_action = "CASH"
+            iwm_sizing = 0    # No change (was already 0)
+            # Net exposure: 0% equities (bonds via _bond_recommendations)
+            # Philosophy: Risk-Off = DEFENSE not OFFENSE. Cash + bonds, zero shorts.
 
         else:
-            # STRONG RISK-OFF - CAPPED short exposure
-            # Preventing extreme inverse correlation
-            spy_action = "SELL"
-            spy_sizing = -40  # REDUCED from -100 (was too aggressive)
-            qqq_action = "SELL"
-            qqq_sizing = -20  # REDUCED from -50
-            iwm_action = "REDUCE"
-            iwm_sizing = -10  # REDUCED from -50
-            # Net exposure: -70% (was -200% - way too extreme!)
+            # STRONG RISK-OFF - MINIMAL short exposure (v4 fix)
+            # v3 had -70% shorts which could still cause losses
+            # v4: Cap at -30% maximum shorts, focus on preservation
+            spy_action = "REDUCE"
+            spy_sizing = -20  # REDUCED from -40 (v3 shorts still too high)
+            qqq_action = "REDUCE"
+            qqq_sizing = -10  # REDUCED from -20
+            iwm_action = "CASH"
+            iwm_sizing = 0    # CHANGED from -10 (no small cap shorts)
+            # Net exposure: -30% max shorts (was -70%)
+            # Philosophy: Even in panic, limited shorting. Bonds do the work.
 
         # CRITICAL Q4 FIX: Reduce position sizing by 50% for extreme scores (>75)
         # Problem: Q4 scores (75-100) have NEGATIVE avg returns (-0.034%) vs Q3 (+0.803%)
